@@ -152,10 +152,8 @@ class Influence():
 
         influences = {}
         infl = [x.tolist() for x in influence]
-        influences['influence'] = infl
+        influences['influences'] = infl
         influences['harmful'] = harmful[:500]
         influences['helpful'] = helpful[:500]
-
-        # print(influences)
 
         return influences

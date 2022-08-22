@@ -1,4 +1,9 @@
 import sys
+import os
+import json
+import torch
+import logging
+from torch_geometric import seed_everything
 
 def display_progress(text, current_step, last_step, enabled=True,
                      fix_zero_start=True):
@@ -44,3 +49,24 @@ def display_progress(text, current_step, last_step, enabled=True,
         sys.stdout.write(bar + "\n")
 
     sys.stdout.flush()
+
+def init_default_config(args):
+    seed_everything(args.seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    log_format = '%(asctime)s: %(message)s'
+    logging.basicConfig(level=args.loglevel, format=log_format)
+
+def save_json(filename, message):
+    if not os.path.isdir('output'):
+        os.mkdir('output')
+
+    data = []
+    logfile = f'output/{filename}.json'
+    if os.path.isfile(logfile):
+        with open(logfile) as json_file:
+            data = json.load(json_file)
+    
+    data.append(message)
+    with open(logfile, 'w') as outfile:
+        json.dump(data, outfile)

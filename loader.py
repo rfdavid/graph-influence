@@ -23,7 +23,6 @@ def sample_subgraph(dataset, sampling_method, batch_size):
                                             num_steps=15, sample_coverage=100,
                                             save_dir=dataset.processed_dir,
                                             num_workers=1)
-
     return loader
 
 def display_subgraphs_info(loader):

@@ -5,9 +5,9 @@ import numpy as np
 import logging
 import os
 
-from torch_geometric import seed_everything
 from loader import load_data, sample_subgraph, display_subgraphs_info
 from model import load_model
+from utils import init_default_config, save_json
 import torch.nn.functional as F
 
 def get_args() -> list:
@@ -28,11 +28,13 @@ def get_args() -> list:
                         help='Number of layers for GCN')
     parser.add_argument('--leave_out', type=int, default=False,
                         help='Leave node x out')
-    parser.add_argument('--node_ids', nargs='+', type=int, default=False,
+    parser.add_argument('--node_ids', nargs='+', type=int, default=[],
                         help='Testing node ids to calculate the loss for comparison')
     parser.add_argument('--debug', dest="loglevel", action='store_const',
                         default=logging.INFO, const=logging.DEBUG, 
                         help='Display additional debug info')
+    parser.add_argument('--experiment_name', type=str, default='default',
+                        help='Experiment name to save the results')
     args = parser.parse_args()
 
     return args
@@ -53,7 +55,7 @@ def train(model, data, leave_out) -> float:
 
 
 @torch.no_grad()
-def test(model, data, test_pos, node_ids, total_loss) -> list:
+def test(model, data, node_ids, total_loss) -> list:
     model.eval()
     total_correct = total_examples = 0
 
@@ -62,8 +64,9 @@ def test(model, data, test_pos, node_ids, total_loss) -> list:
     correct = pred.eq(data.y.to(device))
 
     # loss at testing point x
-    l = F.cross_entropy(out[test_pos], data.y[test_pos])
-    total_loss += float(l)
+    for node_id in node_ids:
+        loss = F.cross_entropy(out[node_id], data.y[node_id])
+        total_loss[node_id] += float(loss)
 
     accs = []
     for _, mask in data('train_mask', 'val_mask', 'test_mask'):
@@ -72,33 +75,39 @@ def test(model, data, test_pos, node_ids, total_loss) -> list:
     return accs,total_loss
 
 
-def run_train(model, data, epochs, leave_out, node_ids) -> None:
+def run_train(model, data, args) -> None:
     max_test_acc = 0
-    total_loss = 0
+    total_loss = {k: 0 for k in args.node_ids}
 
-    for epoch in range(0, epochs):
-        loss = train(model, data, leave_out)
-        accs,total_loss = test(model, data, node_ids, total_loss)
+    for epoch in range(0, args.epochs):
+        loss = train(model, data, args.leave_out)
+        accs,total_loss = test(model, data, args.node_ids, total_loss)
         max_test_acc = max(max_test_acc, accs[2])
         logging.info(f'Epoch: {epoch:02d}, Loss: {loss:.4f}, Train: {accs[0]:.4f}, '
                 f'Val: {accs[1]:.4f}, Test: {accs[2]:.4f}, Max Test: {max_test_acc:.4f}')
+    logging.info(f'Total loss at testing points: {total_loss}')
+
+    save_json(args.experiment_name, {
+        'model': args.model,
+        'dataset': args.dataset,
+        'seed': args.seed,
+        'leave_out': args.leave_out, 
+        'epochs': args.epochs,
+        'max_testing_accuracy': max_test_acc,
+        'total_loss_for_testing_nodes': total_loss
+        })
+
 
 if __name__ == '__main__':
     args = get_args()
+    init_default_config(args)
 
-    seed_everything(args.seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-
-    log_format = '%(asctime)s: %(message)s'
-    logging.basicConfig(level=args.loglevel, format=log_format)
-
-    logging.info(f"Dataset: {args.dataset}")
+    logging.info(f'Dataset: {args.dataset}')
     dataset = load_data(args.dataset)
 
     device = torch.device(args.device if torch.cuda.is_available() and
                             args.device != 'cpu'else 'cpu')
-    logging.info(f"Using: {device}")
+    logging.info(f'Using: {device}')
     
     model = load_model(args.model, 
             in_channels=dataset.num_features,
@@ -106,8 +115,9 @@ if __name__ == '__main__':
             num_layers=args.num_layers,
             out_channels=dataset.num_classes)
     model = model.to(device)
-    logging.info(model)
+    logging.info(f'Model: {model}')
+    logging.info(f'Testing node ids to calculate the loss: {args.node_ids}')
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-    run_train(model, dataset[0], args.epochs, args.leave_out, args.node_ids)
+    run_train(model, dataset[0], args)

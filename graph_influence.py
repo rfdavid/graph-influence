@@ -4,10 +4,10 @@ import torch
 import logging
 import os
 
-from torch_geometric import seed_everything
-from loader import load_data, sample_subgraph, display_subgraphs_info
+from loader import load_data
 from model import load_model
 from influence import Influence
+from utils import init_default_config, save_json 
 import torch.nn.functional as F
 
 def get_args() -> list:
@@ -31,19 +31,15 @@ def get_args() -> list:
     parser.add_argument('--debug', dest="loglevel", action='store_const',
                         default=logging.INFO, const=logging.DEBUG, 
                         help='Display additional debug info')
+    parser.add_argument('--experiment_name', type=str, default='default',
+                        help='Experiment name to save the results')
     args = parser.parse_args()
 
     return args
 
 if __name__ == '__main__':
     args = get_args()
-
-    seed_everything(args.seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-
-    log_format = '%(asctime)s: %(message)s'
-    logging.basicConfig(level=args.loglevel, format=log_format)
+    init_default_config(args)
 
     logging.info(f"Dataset: {args.dataset}")
     dataset = load_data(args.dataset)
@@ -62,5 +58,5 @@ if __name__ == '__main__':
 
     influence = Influence(model, dataset[0], device, args.recursion_depth, args.r_averaging)
     result = influence.calculate(args.node_id)
-
+    save_json(args.experiment_name, result)
     print(result)
