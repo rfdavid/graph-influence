@@ -25,9 +25,11 @@ def get_args() -> list:
     parser.add_argument('--lr', type=int, default=0.001,
                         help='Learning rate')
     parser.add_argument('--num_layers', type=int, default=2,
-                        help='Number of layers')
+                        help='Number of layers for GCN')
     parser.add_argument('--leave_out', type=int, default=False,
                         help='Leave node x out')
+    parser.add_argument('--node_ids', nargs='+', type=int, default=False,
+                        help='Testing node ids to calculate the loss for comparison')
     parser.add_argument('--debug', dest="loglevel", action='store_const',
                         default=logging.INFO, const=logging.DEBUG, 
                         help='Display additional debug info')
@@ -51,7 +53,7 @@ def train(model, data, leave_out) -> float:
 
 
 @torch.no_grad()
-def test(model, data) -> list:
+def test(model, data, test_pos, node_ids, total_loss) -> list:
     model.eval()
     total_correct = total_examples = 0
 
@@ -59,19 +61,24 @@ def test(model, data) -> list:
     pred = out.argmax(dim=-1)
     correct = pred.eq(data.y.to(device))
 
+    # loss at testing point x
+    l = F.cross_entropy(out[test_pos], data.y[test_pos])
+    total_loss += float(l)
+
     accs = []
     for _, mask in data('train_mask', 'val_mask', 'test_mask'):
         accs.append(correct[mask].sum().item() / mask.sum().item())
 
-    return accs
+    return accs,total_loss
 
 
-def run_train(model, data, epochs, leave_out) -> None:
+def run_train(model, data, epochs, leave_out, node_ids) -> None:
     max_test_acc = 0
+    total_loss = 0
 
     for epoch in range(0, epochs):
         loss = train(model, data, leave_out)
-        accs = test(model, data)
+        accs,total_loss = test(model, data, node_ids, total_loss)
         max_test_acc = max(max_test_acc, accs[2])
         logging.info(f'Epoch: {epoch:02d}, Loss: {loss:.4f}, Train: {accs[0]:.4f}, '
                 f'Val: {accs[1]:.4f}, Test: {accs[2]:.4f}, Max Test: {max_test_acc:.4f}')
@@ -103,4 +110,4 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-    run_train(model, dataset[0], args.epochs, args.leave_out)
+    run_train(model, dataset[0], args.epochs, args.leave_out, args.node_ids)

@@ -1,18 +1,22 @@
+# This code is a modified version of https://github.com/nimarb/pytorch_influence_functions
+# adapted to work on graphs
 import torch
 import time
 import copy
 import logging
 from pathlib import Path
 from torch.autograd import grad
-from pytorch_influence_functions.utils import save_json, display_progress
+from utils import display_progress
 import numpy as np
 
 class Influence():
-    def __init__(self, model, data, device):
-        self.device = torch.device(device)
+    def __init__(self, model, data, device, recursion_depth=1, r_averaging=1):
+        self.device = device
         self.data = data.to(self.device)
         self.model = model
         self.verbose = True
+        self.recursion_depth = recursion_depth
+        self.r_averaging = r_averaging
 
     def calc_loss(self, out, y):
         loss = torch.nn.functional.cross_entropy(out, y)
@@ -117,14 +121,10 @@ class Influence():
 
         return s_test_vec
 
-    def s_test_autograd(pos):
-        print("")
-
-
     def calc_influence_single(self, pos, recursion_depth, r, s_test_vec=None, time_logging=False):
         # s_test_vec = self.s_test_autograd(pos)
 
-        # Inverse hessian x testing gradients?
+        # Inverse hessian x testing gradients
         s_test_vec = self.calc_s_test_single(pos, recursion_depth=recursion_depth, r=r)
 
         train_dataset_size = int(self.data.train_mask.sum())
@@ -146,9 +146,9 @@ class Influence():
 
         return influences, harmful.tolist(), helpful.tolist()
 
-    def calculate(self, config, pos):
+    def calculate(self, pos):
         influence, harmful, helpful = self.calc_influence_single(
-                pos, recursion_depth=config['recursion_depth'], r=config['r_averaging'])
+                pos, self.recursion_depth, self.r_averaging)
 
         influences = {}
         infl = [x.tolist() for x in influence]
