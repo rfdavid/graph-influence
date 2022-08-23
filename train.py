@@ -55,7 +55,7 @@ def train(model, data, leave_out) -> float:
 
 
 @torch.no_grad()
-def test(model, data, node_ids, total_loss) -> list:
+def test(model, data, device, node_ids, total_loss) -> list:
     model.eval()
     total_correct = total_examples = 0
 
@@ -65,7 +65,9 @@ def test(model, data, node_ids, total_loss) -> list:
 
     # loss at testing point x
     for node_id in node_ids:
-        loss = F.cross_entropy(out[node_id], data.y[node_id])
+        prediction = out[node_id].view(1, -1)
+        label = torch.tensor([data.y[node_id]]).to(device)
+        loss = F.cross_entropy(prediction, label)
         total_loss[node_id] += float(loss)
 
     accs = []
@@ -81,7 +83,7 @@ def run_train(model, data, args) -> None:
 
     for epoch in range(0, args.epochs):
         loss = train(model, data, args.leave_out)
-        accs,total_loss = test(model, data, args.node_ids, total_loss)
+        accs,total_loss = test(model, data, args.device, args.node_ids, total_loss)
         max_test_acc = max(max_test_acc, accs[2])
         logging.info(f'Epoch: {epoch:02d}, Loss: {loss:.4f}, Train: {accs[0]:.4f}, '
                 f'Val: {accs[1]:.4f}, Test: {accs[2]:.4f}, Max Test: {max_test_acc:.4f}')

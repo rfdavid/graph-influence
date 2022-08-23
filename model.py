@@ -1,4 +1,3 @@
-from sage import SAGE
 from gcn import GCN
 
 def load_model(model, **kwargs):

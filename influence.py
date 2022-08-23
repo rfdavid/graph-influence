@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 from torch.autograd import grad
 from utils import display_progress
+import torch.nn.functional as F
 import numpy as np
 
 class Influence():
@@ -19,7 +20,9 @@ class Influence():
         self.r_averaging = r_averaging
 
     def calc_loss(self, out, y):
-        loss = torch.nn.functional.cross_entropy(out, y)
+        y = torch.tensor([y]).to(self.device)
+        out = out.view(1, -1)
+        loss = F.cross_entropy(out, y)
         return loss
 
     def hvp(self, y, w, v):
@@ -68,7 +71,7 @@ class Influence():
         loss = self.calc_loss(y[pos], self.data.y[pos])
 
         # Compute sum of gradients from model parameters to loss
-        params = [ p for p in self.model.parameters() if p.requires_grad ]
+        params = [p for p in self.model.parameters() if p.requires_grad]
         g = grad(loss, params, create_graph=True)
 
         return list(g)
