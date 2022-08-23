@@ -22,8 +22,8 @@ def get_args() -> list:
                         help='Random seed')
     parser.add_argument('--device', type=str, default='cuda', 
                         help='Device to train')
-    parser.add_argument('--node_id', type=int, default=50, 
-                        help='Testing node id')
+    parser.add_argument('--node_ids', nargs='+', type=int, default=[],
+                        help='Testing node ids')
     parser.add_argument('--recursion_depth', type=int, default=1,
                         help='Recursion depth for s_test calculation')
     parser.add_argument('--r_averaging', type=int, default=1,
@@ -57,6 +57,14 @@ if __name__ == '__main__':
     logging.info(model)
 
     influence = Influence(model, dataset[0], device, args.recursion_depth, args.r_averaging)
-    result = influence.calculate(args.node_id)
-    save_json(args.experiment_name, result)
-    print(result)
+
+    for node_id in args.node_ids:
+        result = influence.calculate(node_id)
+        save_json(args.experiment_name, {
+            'model': args.model,
+            'dataset': args.dataset,
+            'seed': args.seed,
+            'node_id': node_id,
+            'influence': result
+            })
+        print(result)
