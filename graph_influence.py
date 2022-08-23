@@ -18,11 +18,13 @@ def get_args() -> list:
                         help='Model (GCN, GAT)')
     parser.add_argument('--num_layers', type=int, default=2,
                         help='Number of layers for GCN')
+    parser.add_argument('--heads', type=int, default=8,
+                        help='Number of heads for GAT')
     parser.add_argument('--seed', type=int, default=123, 
                         help='Random seed')
     parser.add_argument('--device', type=str, default='cuda', 
                         help='Device to train')
-    parser.add_argument('--node_ids', nargs='+', type=int, default=[],
+    parser.add_argument('--node_ids', nargs='+', type=int, required=True,
                         help='Testing node ids')
     parser.add_argument('--recursion_depth', type=int, default=1,
                         help='Recursion depth for s_test calculation')
@@ -31,7 +33,7 @@ def get_args() -> list:
     parser.add_argument('--debug', dest="loglevel", action='store_const',
                         default=logging.INFO, const=logging.DEBUG, 
                         help='Display additional debug info')
-    parser.add_argument('--experiment_name', type=str, default='default',
+    parser.add_argument('--experiment_name', type=str, default=False,
                         help='Experiment name to save the results')
     args = parser.parse_args()
 
@@ -51,6 +53,7 @@ if __name__ == '__main__':
     model = load_model(args.model, 
             in_channels=dataset.num_features,
             hidden_channels=256,
+            heads=args.heads,
             num_layers=args.num_layers,
             out_channels=dataset.num_classes)
     model = model.to(device)
@@ -60,11 +63,12 @@ if __name__ == '__main__':
 
     for node_id in args.node_ids:
         result = influence.calculate(node_id)
-        save_json(args.experiment_name, {
-            'model': args.model,
-            'dataset': args.dataset,
-            'seed': args.seed,
-            'node_id': node_id,
-            'influence': result
-            })
+        if args.experiment_name:
+            save_json(args.experiment_name, {
+                'model': args.model,
+                'dataset': args.dataset,
+                'seed': args.seed,
+                'node_id': node_id,
+                'influence': result
+                })
         print(result)

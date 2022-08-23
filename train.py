@@ -26,6 +26,8 @@ def get_args() -> list:
                         help='Learning rate')
     parser.add_argument('--num_layers', type=int, default=2,
                         help='Number of layers for GCN')
+    parser.add_argument('--heads', type=int, default=8,
+                        help='Number of heads for GAT')
     parser.add_argument('--leave_out', type=int, default=False,
                         help='Leave node x out')
     parser.add_argument('--node_ids', nargs='+', type=int, default=[],
@@ -33,7 +35,7 @@ def get_args() -> list:
     parser.add_argument('--debug', dest="loglevel", action='store_const',
                         default=logging.INFO, const=logging.DEBUG, 
                         help='Display additional debug info')
-    parser.add_argument('--experiment_name', type=str, default='default',
+    parser.add_argument('--experiment_name', type=str, default=False,
                         help='Experiment name to save the results')
     args = parser.parse_args()
 
@@ -89,15 +91,16 @@ def run_train(model, data, args) -> None:
                 f'Val: {accs[1]:.4f}, Test: {accs[2]:.4f}, Max Test: {max_test_acc:.4f}')
     logging.info(f'Total loss at testing points: {total_loss}')
 
-    save_json(args.experiment_name, {
-        'model': args.model,
-        'dataset': args.dataset,
-        'seed': args.seed,
-        'leave_out': args.leave_out, 
-        'epochs': args.epochs,
-        'max_testing_accuracy': max_test_acc,
-        'total_loss_for_testing_nodes': total_loss
-        })
+    if args.experiment_name:
+        save_json(args.experiment_name, {
+            'model': args.model,
+            'dataset': args.dataset,
+            'seed': args.seed,
+            'leave_out': args.leave_out, 
+            'epochs': args.epochs,
+            'max_testing_accuracy': max_test_acc,
+            'total_loss_for_testing_nodes': total_loss
+            })
 
 
 if __name__ == '__main__':
@@ -115,6 +118,7 @@ if __name__ == '__main__':
             in_channels=dataset.num_features,
             hidden_channels=256,
             num_layers=args.num_layers,
+            heads=args.heads,
             out_channels=dataset.num_classes)
     model = model.to(device)
     logging.info(f'Model: {model}')
