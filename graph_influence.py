@@ -15,7 +15,9 @@ def get_args() -> list:
     parser.add_argument('--dataset', type=str, default='Cora',
                         help='Dataset (Cora, Flickr, Reddit)')
     parser.add_argument('--model', type=str, default='GCN',
-                        help='Model (GCN, GAT)')
+                        help='Model (GCN, GAT, GIN, ARMA)')
+    parser.add_argument('--hidden_layers', type=int, default=256,
+                        help='Number of hidden layers')
     parser.add_argument('--num_layers', type=int, default=2,
                         help='Number of layers for GCN')
     parser.add_argument('--heads', type=int, default=8,
@@ -52,7 +54,7 @@ if __name__ == '__main__':
     
     model = load_model(args.model, 
             in_channels=dataset.num_features,
-            hidden_channels=256,
+            hidden_channels=args.hidden_layers,
             heads=args.heads,
             num_layers=args.num_layers,
             out_channels=dataset.num_classes)

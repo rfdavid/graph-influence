@@ -15,7 +15,7 @@ def get_args() -> list:
     parser.add_argument('--dataset', type=str, default='Cora',
                         help='Dataset (Cora, Flickr, Reddit)')
     parser.add_argument('--model', type=str, default='GCN',
-                        help='Model (GCN, GAT)')
+                        help='Model (GCN, GAT, GIN, ARMA)')
     parser.add_argument('--seed', type=int, default=123, 
                         help='Random seed')
     parser.add_argument('--device', type=str, default='cuda', 
@@ -24,8 +24,10 @@ def get_args() -> list:
                         help='Number of epochs')
     parser.add_argument('--lr', type=int, default=0.001,
                         help='Learning rate')
+    parser.add_argument('--hidden_layers', type=int, default=256,
+                        help='Number of hidden layers')
     parser.add_argument('--num_layers', type=int, default=2,
-                        help='Number of layers for GCN')
+                        help='Number of layers for GCN and GIN')
     parser.add_argument('--heads', type=int, default=8,
                         help='Number of heads for GAT')
     parser.add_argument('--leave_out', type=int, default=False,
@@ -116,7 +118,7 @@ if __name__ == '__main__':
     
     model = load_model(args.model, 
             in_channels=dataset.num_features,
-            hidden_channels=256,
+            hidden_channels=args.hidden_layers,
             num_layers=args.num_layers,
             heads=args.heads,
             out_channels=dataset.num_classes)
