@@ -4,18 +4,24 @@ from torch_geometric.datasets import Flickr
 from torch_geometric.transforms import NormalizeFeatures
 import os.path as osp
 
-def load_data(dataset) -> dict:
+def load_data(dataset):
     if dataset == 'Flickr':
         path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', 'Flickr')
         dataset = Flickr(path)
     elif dataset == 'Cora':
-        dataset = Planetoid(root='data/Planetoid', name='Cora', transform=NormalizeFeatures())
+        dataset = load_planetoid('Cora')
     elif dataset == 'PubMed':
-        dataset = Planetoid(root='data/Planetoid', name='PubMed', transform=NormalizeFeatures())
+        dataset = load_planetoid('PubMed')
+    elif dataset == 'CiteSeer':
+        dataset = load_planetoid('CiteSeer')
     else:
         raise Exception(f'Invalid dataset {dataset}')
 
     return dataset
+
+def load_planetoid(dataset_name):
+        return Planetoid(root='data/Planetoid', name=dataset_name, transform=NormalizeFeatures())
+
 
 def sample_subgraph(dataset, sampling_method, batch_size):
     if sampling_method == 'GraphSAINT':

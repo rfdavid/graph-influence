@@ -13,7 +13,7 @@ import torch.nn.functional as F
 def get_args() -> list:
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default='Cora',
-                        help='Dataset (Cora, Flickr, Reddit)')
+                        help='Dataset (Cora, Flickr, PubMed, CiteSeer)')
     parser.add_argument('--model', type=str, default='GCN',
                         help='Model (GCN, GAT, GIN, ARMA)')
     parser.add_argument('--seed', type=int, default=123, 
