@@ -6,7 +6,7 @@ import logging
 import os
 
 from loader import load_data, sample_subgraph, display_subgraphs_info
-from model import load_model
+from models.model import load_model
 from utils import init_default_config, save_json
 import torch.nn.functional as F
 

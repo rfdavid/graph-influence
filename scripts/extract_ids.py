@@ -20,8 +20,8 @@ def get_args() -> list:
                        help='Display all test node ids')
     parser.add_argument('--train', action='store_true', default=False,
                        help='Display all train node ids')
-    parser.add_argument('--dataset', type=str, default='Cora',
-                        help='Dataset (Cora, Flickr, Reddit...)')
+    parser.add_argument('--dataset', type=str, required=True,
+                        help='Dataset (Cora, Flickr, PubMed, CiteSeer)')
     args = parser.parse_args()
 
     return args

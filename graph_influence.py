@@ -5,7 +5,7 @@ import logging
 import os
 
 from loader import load_data
-from model import load_model
+from models.model import load_model
 from influence import Influence
 from utils import init_default_config, save_json 
 import torch.nn.functional as F

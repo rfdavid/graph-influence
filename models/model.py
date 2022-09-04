@@ -1,7 +1,7 @@
-from gcn import GCN
-from gat import GAT
-from gin import GIN
-from arma import ARMA
+from models.gcn import GCN
+from models.gat import GAT
+from models.gin import GIN
+from models.arma import ARMA
 
 def load_model(model, **kwargs):
     if model == 'GCN':
