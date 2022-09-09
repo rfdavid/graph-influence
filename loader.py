@@ -1,4 +1,4 @@
-from torch_geometric.loader import ShaDowKHopSampler, GraphSAINTRandomWalkSampler
+from torch_geometric.loader import ShaDowKHopSampler, GraphSAINTRandomWalkSampler, RandomNodeSampler
 from torch_geometric.datasets import Planetoid
 from torch_geometric.datasets import Flickr
 from torch_geometric.transforms import NormalizeFeatures
@@ -20,15 +20,31 @@ def load_data(dataset):
     return dataset
 
 def load_planetoid(dataset_name):
-        return Planetoid(root='data/Planetoid', name=dataset_name, transform=NormalizeFeatures())
-
+    return Planetoid(root='data/Planetoid', name=dataset_name, transform=NormalizeFeatures())
 
 def sample_subgraph(dataset, sampling_method, batch_size):
-    if sampling_method == 'GraphSAINT':
+    sampling_method = sampling_method.lower()
+
+    if sampling_method == 'graphsaint':
         loader = GraphSAINTRandomWalkSampler(dataset[0], batch_size=batch_size, walk_length=2,
-                                            num_steps=15, sample_coverage=100,
-                                            save_dir=dataset.processed_dir,
-                                            num_workers=1)
+                num_steps=15, sample_coverage=100,
+                save_dir=dataset.processed_dir,
+                num_workers=1)
+
+    if sampling_metod == 'random':
+        loader = RandomNodeSampler(data, num_parts=100, shuffle=True, num_workers=1)
+
+    if sampling_method == 'shadowkhop':
+        train_loader = ShaDowKHopSampler(data, depth=2, num_neighbors=5,
+                node_idx=data.train_mask, **kwargs)
+        val_loader = ShaDowKHopSampler(data, depth=2, num_neighbors=5,
+                node_idx=data.val_mask, **kwargs)
+        test_loader = ShaDowKHopSampler(data, depth=2, num_neighbors=5,
+                node_idx=data.test_mask, **kwargs)
+        return { train_loader: train_loader,
+                val_loader: val_loader,
+                test_loader: test_loader }
+
     return loader
 
 def display_subgraphs_info(loader):
