@@ -24,17 +24,20 @@ def load_planetoid(dataset_name):
 
 def sample_subgraph(dataset, sampling_method, batch_size):
     sampling_method = sampling_method.lower()
+    train_loader = val_loader = test_loader = None
+    data = dataset[0]
 
     if sampling_method == 'graphsaint':
-        loader = GraphSAINTRandomWalkSampler(dataset[0], batch_size=batch_size, walk_length=2,
+        train_loader = GraphSAINTRandomWalkSampler(data, batch_size=batch_size, walk_length=2,
                 num_steps=15, sample_coverage=100,
                 save_dir=dataset.processed_dir,
                 num_workers=1)
 
-    if sampling_metod == 'random':
-        loader = RandomNodeSampler(data, num_parts=100, shuffle=True, num_workers=1)
+    if sampling_method == 'random':
+        train_loader = RandomNodeSampler(data, num_parts=100, shuffle=True, num_workers=1)
 
     if sampling_method == 'shadowkhop':
+        kwargs = {'batch_size': batch_size, 'num_workers': 6, 'persistent_workers': True}
         train_loader = ShaDowKHopSampler(data, depth=2, num_neighbors=5,
                 node_idx=data.train_mask, **kwargs)
         val_loader = ShaDowKHopSampler(data, depth=2, num_neighbors=5,
@@ -45,7 +48,7 @@ def sample_subgraph(dataset, sampling_method, batch_size):
                 val_loader: val_loader,
                 test_loader: test_loader }
 
-    return loader
+        return {train_loader, test_loader, val_loader}
 
 def display_subgraphs_info(loader):
     for i,d in enumerate(loader):

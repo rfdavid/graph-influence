@@ -16,6 +16,10 @@ def get_args() -> list:
                         help='Dataset (Cora, Flickr, PubMed, CiteSeer)')
     parser.add_argument('--model', type=str, default='GCN',
                         help='Model (GCN, GAT, GIN, ARMA)')
+    parser.add_argument('--sampling', type=str, default=False,
+                        help='Sampling method (shadowkhop, graphsaint, random)')
+    parser.add_argument('--batch_size', type=int, default=1024,
+                        help='Batch size for sampling')
     parser.add_argument('--seed', type=int, default=123, 
                         help='Random seed')
     parser.add_argument('--device', type=str, default='cuda', 
@@ -30,7 +34,7 @@ def get_args() -> list:
                         help='Number of layers for GCN and GIN')
     parser.add_argument('--heads', type=int, default=8,
                         help='Number of heads for GAT')
-    parser.add_argument('--leave_out', type=int, default=False,
+    parser.add_argument('--leave_out', nargs='+', type=int, default=[],
                         help='Leave node x out')
     parser.add_argument('--node_ids', nargs='+', type=int, default=[],
                         help='Testing node ids to calculate the loss for comparison')
@@ -43,12 +47,31 @@ def get_args() -> list:
 
     return args
 
+def train_decoupled(model, batch, leave_out) -> float:
+    total_loss = total_examples = 0
+    for data in batch:
+        data = data.to(device)
+        if len(leave_out) > 0:
+            for i in leave_out:
+                data.train_mask[i] = False
+        model.train()
+        optimizer.zero_grad()
+        out = model(data.x, data.edge_index, data.batch, data.root_n_id)
+        loss = F.cross_entropy(out, data.y)
+        loss.backward()
+        optimizer.step()
+        total_loss += float(loss) * data.num_graphs
+        total_examples += data.num_graphs
+
+    return total_loss / total_examples
+
 
 def train(model, data, leave_out) -> float:
-    if leave_out:
-        data.train_mask[leave_out] = False
-    model.train()
     data = data.to(device)
+    if len(leave_out) > 0:
+        for i in leave_out:
+            data.train_mask[i] = False
+    model.train()
     optimizer.zero_grad()
     out = model(data.x, data.edge_index)
     loss = F.cross_entropy(out[data.train_mask], data.y[data.train_mask])
@@ -56,6 +79,22 @@ def train(model, data, leave_out) -> float:
     optimizer.step()
 
     return loss 
+
+
+@torch.no_grad()
+def test_decoupled(model, loader, device, node_ids, total_loss) -> list:
+    model.eval()
+    total_correct = total_examples = 0
+
+    for data in loader:
+        data = data.to(device)
+        out = model(data.x, data.edge_index, data.batch, data.root_n_id)
+        total_correct += int((out.argmax(dim=-1) == data.y).sum())
+        total_examples += data.num_graphs
+    
+    accs = [0, 0, total_correct / total_examples]
+
+    return accs, 0
 
 
 @torch.no_grad()
@@ -81,13 +120,18 @@ def test(model, data, device, node_ids, total_loss) -> list:
     return accs,total_loss
 
 
-def run_train(model, data, args) -> None:
+def run_train(model, args, train_data, test_data=None) -> None:
     max_test_acc = 0
     total_loss = {k: 0 for k in args.node_ids}
 
     for epoch in range(0, args.epochs):
-        loss = train(model, data, args.leave_out)
-        accs,total_loss = test(model, data, args.device, args.node_ids, total_loss)
+        if test_data:
+            loss = train_decoupled(model, train_data, args.leave_out)
+            accs,total_loss = test_decoupled(model, test_data, args.device, args.node_ids, total_loss)
+        else:
+            loss = train(model, train_data, args.leave_out)
+            accs,total_loss = test(model, train_data, args.device, args.node_ids, total_loss)
+
         max_test_acc = max(max_test_acc, accs[2])
         logging.info(f'Epoch: {epoch:02d}, Loss: {loss:.4f}, Train: {accs[0]:.4f}, '
                 f'Val: {accs[1]:.4f}, Test: {accs[2]:.4f}, Max Test: {max_test_acc:.4f}')
@@ -112,9 +156,30 @@ if __name__ == '__main__':
     logging.info(f'Dataset: {args.dataset}')
     dataset = load_data(args.dataset)
 
+    train_sg = []
+    test_sg = []
+
+    if args.sampling:
+        train_l, test_l, val_l = sample_subgraph(dataset, args.sampling, args.batch_size)
+        # For reproducibility
+        for d in train_l:
+            if args.sampling == 'shadowkhop':
+                d.train_mask[d.train_mask==False] = True
+            train_sg.append(d)
+
+        for d in test_l:
+            if args.sampling == 'shadowkhop':
+                d.test_mask[d.test_mask==False] = True
+            test_sg.append(d)
+
+
     device = torch.device(args.device if torch.cuda.is_available() and
                             args.device != 'cpu'else 'cpu')
     logging.info(f'Using: {device}')
+
+    logging.info("Training Sub-graphs:")
+    for s in train_sg:
+        logging.info(s)
     
     model = load_model(args.model, 
             in_channels=dataset.num_features,
@@ -127,5 +192,8 @@ if __name__ == '__main__':
     logging.info(f'Testing node ids to calculate the loss: {args.node_ids}')
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-
-    run_train(model, dataset[0], args)
+    
+    if args.sampling:
+        run_train(model, args, train_sg, test_sg)
+    else:
+        run_train(model, args, dataset[0])

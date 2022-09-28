@@ -131,3 +131,4 @@ dmypy.json
 # From repo
 output/
 data/
+tmp/

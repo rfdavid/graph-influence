@@ -128,12 +128,13 @@ class Influence():
         # s_test_vec = self.s_test_autograd(pos)
 
         # Inverse hessian x testing gradients
-        s_test_vec = self.calc_s_test_single(pos, recursion_depth=recursion_depth, r=r)
+        # s_test_vec = self.calc_s_test_single(pos, recursion_depth=recursion_depth, r=r)
 
         train_dataset_size = int(self.data.train_mask.sum())
         influences = []
 
         for i,_ in enumerate(self.data.y[self.data.train_mask]):
+            s_test_vec = self.calc_s_test_single(i, recursion_depth=recursion_depth, r=r)
             grad_z_vec = self.grad_z(i)
 
             tmp_influence = -sum(
