@@ -6,7 +6,7 @@ from models.arma import ARMA
 def load_model(model, **kwargs):
     if model == 'GCN':
         model = GCN(kwargs['in_channels'], kwargs['hidden_channels'],
-                kwargs['out_channels'], kwargs['num_layers'])
+                kwargs['out_channels'], kwargs['num_layers'], kwargs['batch'])
     elif model == 'GIN':
         model = GIN(kwargs['in_channels'], kwargs['hidden_channels'],
                 kwargs['out_channels'], kwargs['num_layers'])

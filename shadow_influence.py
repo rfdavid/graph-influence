@@ -10,7 +10,7 @@ from utils import display_progress
 import torch.nn.functional as F
 import numpy as np
 
-class Influence():
+class ShadowInfluence():
     def __init__(self, model, data, device, recursion_depth=1, r_averaging=1):
         self.device = device
         self.data = data.to(self.device)
@@ -67,7 +67,9 @@ class Influence():
 
         self.model.eval()
 
-        y = self.model(self.data.x, self.data.edge_index)
+        y = self.model(self.data.x, self.data.edge_index, self.data.batch,
+                self.data.root_n_id)
+
         loss = self.calc_loss(y[pos], self.data.y[pos])
 
         # Compute sum of gradients from model parameters to loss
@@ -77,8 +79,7 @@ class Influence():
         return list(g)
 
 
-    def s_test(self, pos, damp=0.1, scale=85.0,
-            recursion_depth=50):
+    def s_test(self, pos, damp=0.1, scale=85.0, recursion_depth=50):
         """s_test can be precomputed for each test point of interest, and then
         multiplied with grad_z to get the desired value for each training point.
         Here, strochastic estimation is used to calculate s_test. s_test is the
@@ -88,7 +89,10 @@ class Influence():
         h_estimate = v.copy()
 
         for i in range(recursion_depth):
-            y = self.model(self.data.x, self.data.edge_index)
+            # y = self.model(self.data.x, self.data.edge_index)
+            y = self.model(self.data.x, self.data.edge_index, self.data.batch,
+                    self.data.root_n_id)
+
             loss = self.calc_loss(y[0], self.data.y[0])
 
             params = [ p for p in self.model.parameters() if p.requires_grad ]
@@ -99,7 +103,7 @@ class Influence():
                 _v + (1 - damp) * _h_e - _hv / scale
                 for _v, _h_e, _hv in zip(v, h_estimate, hv)]
 
-            display_progress("Calc. s_test recursions: ", i, recursion_depth)
+#            display_progress("Calc. s_test recursions: ", i, recursion_depth)
             
         return h_estimate
 
@@ -113,7 +117,7 @@ class Influence():
         for i in range(r):
             s_test_vec_list.append(self.s_test(pos, damp=damp, scale=scale,
                                         recursion_depth=recursion_depth))
-            display_progress("Averaging r-times: ", i, r)
+#            display_progress("Averaging r-times: ", i, r)
 
         s_test_vec = s_test_vec_list[0]
 
@@ -124,16 +128,12 @@ class Influence():
 
         return s_test_vec
 
-    def calc_influence_single(self, pos, recursion_depth, r, s_test_vec=None, time_logging=False):
-        # s_test_vec = self.s_test_autograd(pos)
-
-        # Inverse hessian x testing gradients
-        s_test_vec = self.calc_s_test_single(pos, recursion_depth=recursion_depth, r=r)
-
-        train_dataset_size = int(self.data.train_mask.sum())
+    def calc_influence_single(self, recursion_depth, r, s_test_vec=None, time_logging=False):
+        train_dataset_size = len(self.data.y)
         influences = []
 
-        for i,_ in enumerate(self.data.y[self.data.train_mask]):
+        for i,_ in enumerate(self.data.y):
+            s_test_vec = self.calc_s_test_single(i, recursion_depth=recursion_depth, r=r)
             grad_z_vec = self.grad_z(i)
 
             tmp_influence = -sum(
@@ -149,9 +149,9 @@ class Influence():
 
         return influences, harmful.tolist(), helpful.tolist()
 
-    def calculate(self, pos):
+    def calculate(self):
         influence, harmful, helpful = self.calc_influence_single(
-                pos, self.recursion_depth, self.r_averaging)
+                self.recursion_depth, self.r_averaging)
 
         influences = {}
         infl = [x.tolist() for x in influence]

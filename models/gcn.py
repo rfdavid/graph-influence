@@ -6,21 +6,25 @@ import torch.nn.functional as F
 from torch_geometric.nn import global_mean_pool
 
 class GCN(torch.nn.Module):
-    def __init__(self, input_channels, hidden_channels, out_channels, num_layers):
+    def __init__(self, input_channels, hidden_channels, out_channels, num_layers, batch=False):
         super(GCN, self).__init__()
         self.num_layers = num_layers
 
         if num_layers > 1:
             self.first_conv = GCNConv(input_channels, hidden_channels)
+
         if num_layers > 2:
             self.convs = torch.nn.ModuleList()
             for layer in range(num_layers - 2):
                 self.convs.append(GCNConv(hidden_channels, hidden_channels))
+
         if num_layers == 1:
             hidden_channels = input_channels
 
-        self.last_conv = GCNConv(hidden_channels, out_channels)
-        self.lin = torch.nn.Linear(num_layers * hidden_channels, out_channels)
+        if batch:
+            self.lin = torch.nn.Linear(num_layers * hidden_channels, out_channels)
+        else:
+            self.last_conv = GCNConv(hidden_channels, out_channels)
 
     def forward(self, x, edge_index, batch=None, root_n_id=None):
         if self.num_layers > 1:

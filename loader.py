@@ -37,18 +37,35 @@ def sample_subgraph(dataset, sampling_method, batch_size):
         train_loader = RandomNodeSampler(data, num_parts=100, shuffle=True, num_workers=1)
 
     if sampling_method == 'shadowkhop':
-        kwargs = {'batch_size': batch_size, 'num_workers': 6, 'persistent_workers': True}
+        kwargs = {'batch_size': batch_size, 'num_workers': 1, 'persistent_workers': True}
         train_loader = ShaDowKHopSampler(data, depth=2, num_neighbors=5,
                 node_idx=data.train_mask, **kwargs)
         val_loader = ShaDowKHopSampler(data, depth=2, num_neighbors=5,
                 node_idx=data.val_mask, **kwargs)
         test_loader = ShaDowKHopSampler(data, depth=2, num_neighbors=5,
                 node_idx=data.test_mask, **kwargs)
-        return { train_loader: train_loader,
-                val_loader: val_loader,
-                test_loader: test_loader }
 
-        return {train_loader, test_loader, val_loader}
+        # for reproducibility
+        train_sg = []
+        test_sg = []
+        val_sg = []
+        for d in train_loader:
+#            d.train_mask[d.train_mask==False] = True
+            train_sg.append(d)
+
+        for d in test_loader:
+#            d.test_mask[d.test_mask==False] = True
+            test_sg.append(d)
+
+        for d in val_loader:
+#            d.test_mask[d.test_mask==False] = True
+            test_sg.append(d)
+
+        train_loader = train_sg
+        test_loader = test_sg
+        val_loader = val_sg
+
+    return train_loader, test_loader, val_loader
 
 def display_subgraphs_info(loader):
     for i,d in enumerate(loader):

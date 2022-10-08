@@ -49,14 +49,29 @@ def get_args() -> list:
 
 def train_decoupled(model, batch, leave_out) -> float:
     total_loss = total_examples = 0
-    for data in batch:
+
+    drop = [
+            [23],
+            [23],
+            [5],
+            [2],
+            [23],
+            [7]
+           ]
+
+#    drop = False
+
+    for idx,data in enumerate(batch):
         data = data.to(device)
-        if len(leave_out) > 0:
-            for i in leave_out:
-                data.train_mask[i] = False
         model.train()
         optimizer.zero_grad()
         out = model(data.x, data.edge_index, data.batch, data.root_n_id)
+
+        if drop:
+            for d in drop[idx]:
+                data.y[d] = False
+                out[d] = False
+
         loss = F.cross_entropy(out, data.y)
         loss.backward()
         optimizer.step()
@@ -156,29 +171,16 @@ if __name__ == '__main__':
     logging.info(f'Dataset: {args.dataset}')
     dataset = load_data(args.dataset)
 
-    train_sg = []
-    test_sg = []
-
     if args.sampling:
         train_l, test_l, val_l = sample_subgraph(dataset, args.sampling, args.batch_size)
-        # For reproducibility
-        for d in train_l:
-            if args.sampling == 'shadowkhop':
-                d.train_mask[d.train_mask==False] = True
-            train_sg.append(d)
-
-        for d in test_l:
-            if args.sampling == 'shadowkhop':
-                d.test_mask[d.test_mask==False] = True
-            test_sg.append(d)
-
 
     device = torch.device(args.device if torch.cuda.is_available() and
                             args.device != 'cpu'else 'cpu')
     logging.info(f'Using: {device}')
 
     logging.info("Training Sub-graphs:")
-    for s in train_sg:
+    logging.info(dataset[0])
+    for s in train_l:
         logging.info(s)
     
     model = load_model(args.model, 
@@ -186,7 +188,8 @@ if __name__ == '__main__':
             hidden_channels=args.hidden_layers,
             num_layers=args.num_layers,
             heads=args.heads,
-            out_channels=dataset.num_classes)
+            out_channels=dataset.num_classes,
+            batch=args.sampling and True)
     model = model.to(device)
     logging.info(f'Model: {model}')
     logging.info(f'Testing node ids to calculate the loss: {args.node_ids}')
@@ -194,6 +197,6 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     
     if args.sampling:
-        run_train(model, args, train_sg, test_sg)
+        run_train(model, args, train_l, test_l)
     else:
         run_train(model, args, dataset[0])
