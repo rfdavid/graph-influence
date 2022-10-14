@@ -5,21 +5,9 @@ import json
 import sys
 
 def parse_train(data):
-    test_ids = []
-    out = "training node id,"
-    for k in data[0]['total_loss_for_testing_nodes']:
-        out += str(k) + ","
-        test_ids.append(k)
-
-    out += "max accuracy"
-    print(out)
-
     for row in data:
-        out = str(row['leave_out']) + ","
-        for node_id in test_ids:
-            out += str(row['total_loss_for_testing_nodes'][node_id]) + ","
-        out += str(row['max_testing_accuracy'])
-        print(out)
+        (k,v), = row['total_loss_for_testing_nodes'].items()
+        print(f"{v}")
 
 def parse_influence(data):
     test_ids = []

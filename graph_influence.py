@@ -31,7 +31,7 @@ def get_args() -> list:
                         help='Random seed')
     parser.add_argument('--device', type=str, default='cuda', 
                         help='Device to train')
-    parser.add_argument('--node_ids', nargs='+', type=int,
+    parser.add_argument('--node_ids', nargs='+', type=int, default=[False],
                         help='Testing node ids')
     parser.add_argument('--recursion_depth', type=int, default=1,
                         help='Recursion depth for s_test calculation')

@@ -35,7 +35,7 @@ def get_args() -> list:
     parser.add_argument('--heads', type=int, default=8,
                         help='Number of heads for GAT')
     parser.add_argument('--leave_out', nargs='+', type=int, default=[],
-                        help='Leave node x out')
+                        help='Mask nodes during training')
     parser.add_argument('--node_ids', nargs='+', type=int, default=[],
                         help='Testing node ids to calculate the loss for comparison')
     parser.add_argument('--debug', dest="loglevel", action='store_const',
@@ -50,25 +50,14 @@ def get_args() -> list:
 def train_decoupled(model, batch, leave_out) -> float:
     total_loss = total_examples = 0
 
-    drop = [
-            [23],
-            [23],
-            [5],
-            [2],
-            [23],
-            [7]
-           ]
-
-#    drop = False
-
     for idx,data in enumerate(batch):
         data = data.to(device)
         model.train()
         optimizer.zero_grad()
         out = model(data.x, data.edge_index, data.batch, data.root_n_id)
 
-        if drop:
-            for d in drop[idx]:
+        if len(leave_out) > 0:
+            for d in leave_out:
                 data.y[d] = False
                 out[d] = False
 
@@ -173,6 +162,8 @@ if __name__ == '__main__':
 
     if args.sampling:
         train_l, test_l, val_l = sample_subgraph(dataset, args.sampling, args.batch_size)
+        for s in train_l:
+            logging.info(s)
 
     device = torch.device(args.device if torch.cuda.is_available() and
                             args.device != 'cpu'else 'cpu')
@@ -180,8 +171,6 @@ if __name__ == '__main__':
 
     logging.info("Training Sub-graphs:")
     logging.info(dataset[0])
-    for s in train_l:
-        logging.info(s)
     
     model = load_model(args.model, 
             in_channels=dataset.num_features,

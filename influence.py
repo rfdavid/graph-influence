@@ -89,7 +89,7 @@ class Influence():
 
         for i in range(recursion_depth):
             y = self.model(self.data.x, self.data.edge_index)
-            loss = self.calc_loss(y[0], self.data.y[0])
+            loss = self.calc_loss(y[pos], self.data.y[pos])
 
             params = [ p for p in self.model.parameters() if p.requires_grad ]
             hv = self.hvp(loss, params, h_estimate)
@@ -128,12 +128,17 @@ class Influence():
         # s_test_vec = self.s_test_autograd(pos)
 
         # Inverse hessian x testing gradients
-        s_test_vec = self.calc_s_test_single(pos, recursion_depth=recursion_depth, r=r)
+        if pos:
+            s_test_vec = self.calc_s_test_single(pos, recursion_depth=recursion_depth, r=r)
 
         train_dataset_size = int(self.data.train_mask.sum())
         influences = []
 
         for i,_ in enumerate(self.data.y[self.data.train_mask]):
+            # -nabla * loss(v)^T * H^-1 * loss(v)
+            if pos == False:
+                s_test_vec = self.calc_s_test_single(i, recursion_depth=recursion_depth, r=r)
+
             grad_z_vec = self.grad_z(i)
 
             tmp_influence = -sum(
