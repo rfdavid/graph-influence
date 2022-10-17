@@ -1,7 +1,10 @@
 # Graph Influence
 
 Graph Influence is an implementation of [Influence Functions](https://arxiv.org/abs/1703.04730) 
-by Pang Wei Koh and Percy Liang for Graph Neural Networks. 
+by Pang Wei Koh and Percy Liang for Graph Neural Networks. The main idea is to
+use the same methodology to calculate the influence of a training node in
+another testing node.
+
 There are two main files in this repository: `train.py` and `graph_influence.py`. 
 The first is a generic graph application to train graph neural networks on different toy datasets for different models. 
 If you want to see more comprehensive information about influence functions,
@@ -10,7 +13,8 @@ please take a look at my [blog post about influence functions](https://rfdavid.c
 ### Training from scratch
 
 You can train a model from scratch leaving one specific node out for
-validation/debugging purpose:  
+validation/debugging purpose. When leave\_out is set, it will not actually
+remove the node and its edges, but it is going to mask during training:  
 
 `$ python train.py --dataset Cora --model GAT --leave_out 11`
 
@@ -18,6 +22,8 @@ validation/debugging purpose:
 | ----------- | ----------- | ----------- |
 | --dataset | Dataset to use (Cora, Pubmed, CiteSeer, Flickr) | Cora |
 | --model | Network model (GCN, GAT, GIN, ARMA) | GCN | 
+| --sampling | Use sampling (random, graphsaint, shadowkhop) |
+| --batch\_size | batch size for sampling (default: 1024) |
 | --seed | Seeding number | 123 |
 | --device | Device to train (cpu, cuda...) | cuda |
 | --epochs | Number of epochs | 50 |
@@ -32,7 +38,7 @@ validation/debugging purpose:
 
 ### Calculating the influence
 
-To calculate the influence function use `graph_infliuence`. The following
+To calculate the influence function use `graph_influence`. The following
 example calculates the values for the test node ids 1708, 1720 and 1800 for
 Cora dataset on GAT.
 
@@ -43,6 +49,8 @@ Cora dataset on GAT.
 | ----------- | ----------- | ----------- |
 | --dataset | Dataset to use (Cora, Pubmed, CiteSeer, Flickr) | Cora |
 | --model | Network model (GCN, GAT, GIN, ARMA) | GCN | 
+| --sampling | Use sampling (random, graphsaint, shadowkhop) |
+| --batch\_size | batch size for sampling (default: 1024) |
 | --seed | Seeding number | 123 |
 | --device | Device to train (cpu, cuda...) | cuda |
 | --epochs | Number of epochs | 50 |
